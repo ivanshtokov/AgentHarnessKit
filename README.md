@@ -42,8 +42,12 @@ model receives observation
 - Memory/file state store для tasks, approvals, artifacts, checkpoints.
 - Budget controller для steps, tool calls, retries, cost.
 - Trace recorder без hidden reasoning.
+- JSONL trace exporter с redaction для secret-like полей.
 - Context builder со stable prefix и dynamic suffix.
+- Compaction snapshot helper для resumable handoff/checkpoints.
 - Provider adapter skeletons для OpenAI Responses, Anthropic Messages, OpenAI-compatible chat completions.
+- MCP connector adapter skeleton для namespaced connector tools.
+- Sandbox runner hook для tools, которым нужен внешний process/container isolation.
 - Executable eval runner.
 - Approval-gated пример renewal-risk агента.
 - Полный reference-layer по проектированию агентных харнессов.
@@ -229,7 +233,11 @@ user/task
 - `createFileStateStore` — хранит runtime state в JSON-файле.
 - `createBudgetController` — контролирует steps, tool calls, retries, cost.
 - `createTraceRecorder` — пишет runtime events.
+- `createJsonlTraceExporter` — пишет trace events в JSONL с redaction.
 - `createContextBuilder` — собирает stable prefix и dynamic suffix.
+- `createCompactionSnapshot` — собирает compact handoff без chat prose.
+- `saveCompactionCheckpoint` — сохраняет compaction snapshot в state store checkpoint.
+- `createMcpToolAdapter` — оборачивает MCP/connector tool в typed harness tool.
 - `runHarnessEvals` — запускает executable eval cases.
 
 ## Risk classes
@@ -313,11 +321,11 @@ npm run example:renewal-risk
 
 ## Что ещё не является production-гарантией
 
-- Нет жёсткого process sandbox.
+- Нет встроенного process/container sandbox. Есть `sandboxRunner` hook; сам sandbox подключает приложение.
 - Нет встроенного auth provider.
-- Нет distributed trace exporter.
+- Нет distributed trace backend. Есть JSONL exporter для локального audit/incident review.
 - Streaming adapters пока не реализованы.
-- MCP connector runtime пока не реализован.
+- MCP connector runtime пока не реализован полностью. Есть adapter skeleton для namespaced typed connector tools.
 
 Это starter kit с production-oriented contract, а не готовая hosted platform.
 

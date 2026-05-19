@@ -59,6 +59,76 @@ Tool registry проверяет:
 - модель получает observation со статусом `timeout`;
 - loop может продолжить или остановиться по policy.
 
+## Tool isolation
+
+Tool может объявить:
+
+```js
+{
+  name: "run_isolated_check",
+  isolation: "sandbox",
+  sandboxSpec: {
+    image: "node:20",
+    network: "none"
+  }
+}
+```
+
+`Harness Agent Kit` не притворяется встроенным sandbox. Если tool требует `isolation: "sandbox"`, registry выполняет его только через переданный `sandboxRunner`.
+
+Если runner не настроен:
+
+- tool не исполняется;
+- trace пишет `tool_policy_denied`;
+- модель получает observation `denied`;
+- runtime не падает и не делает host execution fallback.
+
+Это контрактная точка для Docker, Firecracker, Vercel Sandbox, isolated worker или другого process/container boundary.
+
+## Trace export
+
+`createTraceRecorder` пишет events в памяти. Для audit trail можно подключить exporter:
+
+```js
+import { createJsonlTraceExporter, createTraceRecorder } from "harness-agent-kit";
+
+const trace = createTraceRecorder({
+  exporters: [
+    createJsonlTraceExporter({ filePath: ".harnesskit/trace.jsonl" })
+  ]
+});
+```
+
+JSONL exporter redacts поля вида `secret`, `token`, `password`, `apiKey`, `authorization`. Он нужен для local incident review и CI artifacts. Для production backend оставь отдельный exporter поверх OpenTelemetry, SIEM или event log.
+
+## Compaction snapshots
+
+`createCompactionSnapshot` сохраняет рабочее состояние, а не пересказ чата:
+
+- active plan;
+- active goal;
+- approvals;
+- artifacts;
+- do-not-redo list;
+- loaded skills;
+- connector state;
+- observation summaries;
+- trace summary.
+
+`saveCompactionCheckpoint` пишет snapshot в `stateStore.addCheckpoint`. Это минимальный runtime bridge между compaction handoff template и исполняемым state store.
+
+## MCP/connector adapter skeleton
+
+`createMcpToolAdapter` оборачивает connector tool в обычный harness tool:
+
+- имя получает namespace `mcp_<server>_<tool>`;
+- schema остается narrow и валидируется registry;
+- risk class задается явно;
+- scopes хранятся в metadata;
+- connector output возвращается как structured observation.
+
+Auth connector-а не равен authorization runtime-а. Approval по-прежнему принимает permission engine.
+
 ## Evals
 
 `runHarnessEvals` запускает executable checks:
@@ -82,8 +152,8 @@ const report = await runHarnessEvals([
 ## Что ещё нужно для production
 
 - База или append-only event log для state.
-- Trace exporter.
+- Distributed trace exporter.
 - SDK adapters для конкретных провайдеров.
-- Tool sandbox.
+- Реальный process/container sandbox за `sandboxRunner`.
 - Auth/authz слой поверх identity пользователя.
 - Eval dataset под домен.

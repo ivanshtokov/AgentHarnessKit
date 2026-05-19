@@ -2,11 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createBudgetController,
+  createCompactionSnapshot,
   createDefaultPermissionEngine,
   createFileStateStore,
   createHarness,
+  createJsonlTraceExporter,
+  createMcpToolAdapter,
   createMemoryStateStore,
+  createTraceRecorder,
+  createToolRegistry,
   runHarnessEvals,
+  saveCompactionCheckpoint,
   riskClasses
 } from "../src/index.js";
 import fs from "node:fs";
@@ -241,6 +248,46 @@ test("serializes unlimited cost budget as null", async () => {
 
   assert.equal(result.budget.limits.maxCostUsd, null);
   assert.doesNotThrow(() => JSON.stringify(result.budget));
+});
+
+test("returns budget exhausted result when tool-call budget is exceeded", async () => {
+  const model = {
+    async next() {
+      return {
+        type: "tool_call",
+        toolName: "read_profile",
+        args: { userId: "usr_1" }
+      };
+    }
+  };
+
+  const harness = createHarness({
+    model,
+    budget: createBudgetController({ maxToolCalls: 0 }),
+    tools: [
+      {
+        name: "read_profile",
+        description: "Read a user profile.",
+        riskClass: riskClasses.READ_ONLY,
+        inputSchema: {
+          type: "object",
+          required: ["userId"],
+          properties: {
+            userId: { type: "string" }
+          }
+        },
+        async execute() {
+          throw new Error("should not execute after budget exhaustion");
+        }
+      }
+    ]
+  });
+
+  const result = await harness.run({ id: "task_budget", objective: "Read profile" });
+  assert.equal(result.status, "budget_exhausted");
+  assert.equal(result.observations[0].status, "budget_exhausted");
+  assert.equal(result.observations[0].tool, "read_profile");
+  assert.equal(result.trace.some((event) => event.type === "budget_exhausted"), true);
 });
 
 test("does not reuse approval record for different args", async () => {
@@ -480,4 +527,170 @@ test("keeps full harness reference coverage", () => {
   const actualReferences = fs.readdirSync(referenceDir).filter((file) => file.endsWith(".md")).sort();
 
   assert.deepEqual(actualReferences, expectedReferences.sort());
+});
+
+test("denies sandboxed tools when no sandbox runner is configured", async () => {
+  const model = {
+    calls: 0,
+    async next() {
+      this.calls += 1;
+      if (this.calls === 2) return { type: "final", content: "Denied safely" };
+      return {
+        type: "tool_call",
+        toolName: "run_isolated_check",
+        args: { target: "repo" }
+      };
+    }
+  };
+
+  const harness = createHarness({
+    model,
+    tools: [
+      {
+        name: "run_isolated_check",
+        description: "Run an isolated check in a sandbox.",
+        riskClass: riskClasses.READ_ONLY,
+        isolation: "sandbox",
+        inputSchema: {
+          type: "object",
+          required: ["target"],
+          properties: {
+            target: { type: "string" }
+          }
+        },
+        sandboxSpec: {
+          image: "node:20",
+          network: "none"
+        }
+      }
+    ]
+  });
+
+  const result = await harness.run({ id: "task_11", objective: "Run isolated check" });
+  assert.equal(result.status, "done");
+  assert.equal(result.observations[0].status, "denied");
+  assert.equal(result.observations[0].details.isolation, "sandbox");
+});
+
+test("executes sandboxed tools through configured sandbox runner", async () => {
+  const registry = createToolRegistry({
+    sandboxRunner: {
+      async execute({ tool, args, context }) {
+        assert.equal(tool.name, "run_isolated_check");
+        assert.equal(args.target, "repo");
+        assert.equal(context.task.id, "task_12");
+        return {
+          status: "success",
+          data: { isolated: true }
+        };
+      }
+    }
+  });
+
+  registry.register({
+    name: "run_isolated_check",
+    description: "Run an isolated check in a sandbox.",
+    riskClass: riskClasses.READ_ONLY,
+    isolation: "sandbox",
+    inputSchema: {
+      type: "object",
+      required: ["target"],
+      properties: {
+        target: { type: "string" }
+      }
+    },
+    sandboxSpec: {
+      image: "node:20",
+      network: "none"
+    }
+  });
+
+  const result = await registry.execute(
+    "run_isolated_check",
+    { target: "repo" },
+    { task: { id: "task_12" } }
+  );
+
+  assert.equal(result.status, "success");
+  assert.equal(result.data.isolated, true);
+});
+
+test("exports trace events as redacted jsonl", async () => {
+  const filePath = path.join(os.tmpdir(), `harnesskit-trace-${Date.now()}.jsonl`);
+  const exporter = createJsonlTraceExporter({ filePath });
+  const model = {
+    async next() {
+      return { type: "final", content: "Done" };
+    }
+  };
+
+  const harness = createHarness({
+    model,
+    trace: createTraceRecorder({ exporters: [exporter] })
+  });
+
+  harness.trace.record("custom_event", {
+    apiKey: "secret_value",
+    nested: { authorization: "Bearer secret" }
+  });
+
+  await harness.run({ id: "task_13", objective: "Export trace" });
+  const lines = fs.readFileSync(filePath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
+
+  assert.equal(lines[0].apiKey, "[REDACTED]");
+  assert.equal(lines[0].nested.authorization, "[REDACTED]");
+  assert.equal(lines.some((line) => line.type === "task_started"), true);
+
+  fs.rmSync(filePath, { force: true });
+});
+
+test("creates and persists compaction checkpoint snapshots", () => {
+  const stateStore = createMemoryStateStore();
+  const snapshot = createCompactionSnapshot({
+    task: { id: "task_14", objective: "Resume later" },
+    activePlan: { id: "plan_1", version: 2 },
+    activeGoal: { id: "goal_1", doneCondition: "all checks pass" },
+    approvals: [{ id: "apr_1" }],
+    observations: [{ status: "approval_required", tool: "send_email", reason: "approval" }],
+    trace: [{ id: "evt_1", type: "task_started" }],
+    doNotRedo: ["npm test"]
+  });
+
+  const checkpoint = saveCompactionCheckpoint({ stateStore, snapshot });
+  const saved = stateStore.listCheckpoints("task_14")[0];
+
+  assert.equal(checkpoint.kind, "compaction_snapshot");
+  assert.equal(saved.snapshot.activePlan.version, 2);
+  assert.equal(saved.snapshot.observations[0].status, "approval_required");
+  assert.equal(saved.snapshot.traceSummary.eventCount, 1);
+});
+
+test("wraps MCP connector tools as namespaced harness tools", async () => {
+  const tool = createMcpToolAdapter({
+    serverName: "Google Drive",
+    toolName: "Search Files",
+    description: "Search files through an MCP connector.",
+    riskClass: riskClasses.READ_ONLY,
+    scopes: ["drive.readonly"],
+    inputSchema: {
+      type: "object",
+      required: ["query"],
+      properties: {
+        query: { type: "string" }
+      }
+    },
+    async callTool({ serverName, toolName, args, scopes }) {
+      assert.equal(serverName, "Google Drive");
+      assert.equal(toolName, "Search Files");
+      assert.equal(args.query, "contract");
+      assert.deepEqual(scopes, ["drive.readonly"]);
+      return [{ id: "file_1" }];
+    }
+  });
+
+  assert.equal(tool.name, "mcp_google_drive_search_files");
+  const result = await tool.execute({ query: "contract" }, {});
+  assert.equal(result.status, "success");
+  assert.equal(result.data[0].id, "file_1");
+  assert.equal(result.metadata.connectorType, "mcp");
 });

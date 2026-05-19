@@ -112,6 +112,9 @@ Hermes `delegate_task` workers are isolated subagents. Pass the harness boot con
 - `src/runtime/context-builder.js`: stable prefix and dynamic suffix assembly.
 - `src/runtime/budget.js`: step, tool-call, retry, and cost budgets.
 - `src/runtime/trace-recorder.js`: operational trace events.
+- `src/runtime/trace-exporters.js`: JSONL trace export with secret redaction.
+- `src/runtime/compaction.js`: compaction snapshots and checkpoint persistence.
+- `src/connectors/mcp-tool-adapter.js`: MCP connector tools wrapped as namespaced harness tools.
 - `src/evals/eval-runner.js`: executable harness eval runner.
 - `templates/harness-boot-contract.md`: minimal instructions for isolated workers.
 - `templates/delegate-task-prompt.md`: prompt template for subagents and `delegate_task`.

@@ -35,7 +35,7 @@ export function createHarness({
     async run(task, { state = {}, maxSteps } = {}) {
       validateTask(task);
       const observations = [];
-      const stepLimit = maxSteps || budget.snapshot().limits.maxSteps;
+      const stepLimit = maxSteps ?? budget.snapshot().limits.maxSteps;
 
       stateStore?.upsertTask?.({
         id: task.id,
@@ -45,7 +45,14 @@ export function createHarness({
       trace.record("task_started", { taskId: task.id, objective: task.objective });
 
       for (let step = 1; step <= stepLimit; step += 1) {
-        budget.step();
+        try {
+          budget.step();
+        } catch (error) {
+          if (error instanceof HarnessPolicyError) {
+            return stopForBudgetExhaustion({ error, task, observations, trace, budget, stateStore });
+          }
+          throw error;
+        }
         trace.record("step_started", { taskId: task.id, step });
 
         const context = contextBuilder.build({
@@ -103,6 +110,17 @@ export function createHarness({
 
         observations.push(observation);
 
+        if (observation.status === "budget_exhausted") {
+          return stopForBudgetExhaustion({
+            details: observation.details,
+            task,
+            observations,
+            trace,
+            budget,
+            stateStore
+          });
+        }
+
         if (observation.status === "validation_error" || observation.status === "tool_error") {
           continue;
         }
@@ -154,7 +172,25 @@ async function handleToolCall({
   modelOutput
 }) {
   const { toolName, args = {} } = modelOutput;
-  budget.toolCall();
+  try {
+    budget.toolCall();
+  } catch (error) {
+    if (error instanceof HarnessPolicyError) {
+      trace.record("budget_exhausted", {
+        taskId: task.id,
+        toolName,
+        reason: error.message,
+        details: error.details || {}
+      });
+      return {
+        status: "budget_exhausted",
+        tool: toolName,
+        reason: error.message,
+        details: error.details || {}
+      };
+    }
+    throw error;
+  }
   trace.record("tool_call_proposed", { taskId: task.id, toolName, args: redact(args) });
 
   let tool;
@@ -222,6 +258,20 @@ async function handleToolCall({
       };
     }
 
+    if (error instanceof HarnessPolicyError) {
+      trace.record("tool_policy_denied", {
+        taskId: task.id,
+        toolName,
+        reason: error.message
+      });
+      return {
+        status: "denied",
+        tool: toolName,
+        reason: error.message,
+        details: error.details || {}
+      };
+    }
+
     trace.record("tool_execution_failed", {
       taskId: task.id,
       toolName,
@@ -265,6 +315,26 @@ function validateTask(task) {
   if (!task.objective || typeof task.objective !== "string") {
     throw new HarnessValidationError("Task objective is required");
   }
+}
+
+function stopForBudgetExhaustion({ error = null, details = null, task, observations, trace, budget, stateStore }) {
+  trace.record("task_stopped", {
+    taskId: task.id,
+    reason: "budget_exhausted",
+    details: details || error?.details || {}
+  });
+  stateStore?.upsertTask?.({
+    id: task.id,
+    status: "budget_exhausted",
+    stopReason: "budget_exhausted"
+  });
+  return {
+    status: "budget_exhausted",
+    reason: "budget_exhausted",
+    observations,
+    trace: trace.all(),
+    budget: budget.snapshot()
+  };
 }
 
 function redact(value) {

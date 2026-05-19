@@ -19,6 +19,9 @@ export {
   stableStringify
 } from "./runtime/state-store.js";
 export { createTraceRecorder } from "./runtime/trace-recorder.js";
+export { createJsonlTraceExporter, redactTraceEvent } from "./runtime/trace-exporters.js";
 export { createToolRegistry } from "./runtime/tool-registry.js";
+export { createCompactionSnapshot, saveCompactionCheckpoint } from "./runtime/compaction.js";
+export { createMcpToolAdapter } from "./connectors/mcp-tool-adapter.js";
 export { runHarnessEvals } from "./evals/eval-runner.js";
 export { riskClasses } from "./runtime/risk-classes.js";
