@@ -34,6 +34,8 @@
   "scripts": {
     "sync:skills": "node scripts/sync-skill-packages.js",
     "test": "node --test",
+    "evals": "node scripts/run-evals.js",
+    "verify:release": "npm run sync:skills && npm run verify:integrations && npm run evals && npm test",
     "verify:integrations": "node scripts/verify-integrations.js",
     "example:renewal-risk": "node examples/renewal-risk-agent.js"
   },

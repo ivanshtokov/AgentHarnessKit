@@ -63,6 +63,7 @@ cd AgentHarnessKit
 npm install
 npm test
 npm run verify:integrations
+npm run evals
 npm run example:renewal-risk
 ```
 
@@ -239,6 +240,7 @@ user/task
 - `saveCompactionCheckpoint` — сохраняет compaction snapshot в state store checkpoint.
 - `createMcpToolAdapter` — оборачивает MCP/connector tool в typed harness tool.
 - `runHarnessEvals` — запускает executable eval cases.
+- `runReleaseEvals` — запускает встроенный release gate для approval, sandbox, budget, trace и compaction.
 
 ## Risk classes
 
@@ -315,6 +317,7 @@ Verifier проверяет, что эти templates лежат во всех Co
 ```bash
 npm run sync:skills
 npm run verify:integrations
+npm run evals
 npm test
 npm run example:renewal-risk
 ```

@@ -30,6 +30,9 @@ jobs:
       - name: Verify integration layout
         run: npm run verify:integrations
 
+      - name: Run release evals
+        run: npm run evals
+
       - name: Test
         run: npm test
 

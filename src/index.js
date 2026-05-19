@@ -24,4 +24,5 @@ export { createToolRegistry } from "./runtime/tool-registry.js";
 export { createCompactionSnapshot, saveCompactionCheckpoint } from "./runtime/compaction.js";
 export { createMcpToolAdapter } from "./connectors/mcp-tool-adapter.js";
 export { runHarnessEvals } from "./evals/eval-runner.js";
+export { createReleaseEvalCases, runReleaseEvals } from "./evals/release-eval-suite.js";
 export { riskClasses } from "./runtime/risk-classes.js";

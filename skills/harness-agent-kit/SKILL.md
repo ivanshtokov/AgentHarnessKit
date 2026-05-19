@@ -116,6 +116,7 @@ Hermes `delegate_task` workers are isolated subagents. Pass the harness boot con
 - `src/runtime/compaction.js`: compaction snapshots and checkpoint persistence.
 - `src/connectors/mcp-tool-adapter.js`: MCP connector tools wrapped as namespaced harness tools.
 - `src/evals/eval-runner.js`: executable harness eval runner.
+- `src/evals/release-eval-suite.js`: built-in launch gate for approval, sandbox, budget, trace, and compaction behavior.
 - `templates/harness-boot-contract.md`: minimal instructions for isolated workers.
 - `templates/delegate-task-prompt.md`: prompt template for subagents and `delegate_task`.
 - `templates/hermes-cron-prompt.md`: prompt template for Hermes cron jobs.

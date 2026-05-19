@@ -149,6 +149,15 @@ const report = await runHarnessEvals([
 
 Это не заменяет полноценный eval framework, но убирает разрыв между checklist и исполняемой проверкой.
 
+`npm run evals` запускает встроенный release suite:
+
+- external communication требует approval;
+- approval нельзя переиспользовать для других args;
+- sandboxed tool не получает host fallback;
+- budget exhaustion возвращается как structured result;
+- trace exporter redacts secrets;
+- compaction snapshot сохраняет plan, goal, approvals, skills и connector state.
+
 ## Что ещё нужно для production
 
 - База или append-only event log для state.
