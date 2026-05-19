@@ -4,6 +4,9 @@ export {
   HarnessToolError,
   HarnessValidationError
 } from "./runtime/harness.js";
+export { createAnthropicMessagesAdapter } from "./adapters/anthropic-messages.js";
+export { createOpenAICompatibleChatAdapter } from "./adapters/openai-compatible-chat.js";
+export { createOpenAIResponsesAdapter } from "./adapters/openai-responses.js";
 export { createBudgetController } from "./runtime/budget.js";
 export { createContextBuilder } from "./runtime/context-builder.js";
 export { createDefaultPermissionEngine } from "./runtime/permission-engine.js";
