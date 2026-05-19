@@ -1,0 +1,20 @@
+{
+  "name": "harnesskit-local",
+  "interface": {
+    "displayName": "Harness Agent Kit"
+  },
+  "plugins": [
+    {
+      "name": "harness-agent-kit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/harness-agent-kit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Engineering"
+    }
+  ]
+}

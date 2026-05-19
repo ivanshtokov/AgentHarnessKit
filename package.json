@@ -1,0 +1,42 @@
+{
+  "name": "harness-agent-kit",
+  "version": "0.2.0",
+  "description": "Provider-neutral agent harness kit with typed tools, permissions, budgets, trace events, context assembly, and approval-gated execution.",
+  "keywords": [
+    "agent",
+    "harness",
+    "tools",
+    "permissions",
+    "evals",
+    "mcp",
+    "llm"
+  ],
+  "homepage": "https://github.com/ivanshtokov/AgentHarnessKit#readme",
+  "bugs": {
+    "url": "https://github.com/ivanshtokov/AgentHarnessKit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ivanshtokov/AgentHarnessKit.git"
+  },
+  "license": "MIT",
+  "author": "ivanshtokov",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "main": "src/index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node --test",
+    "verify:integrations": "node scripts/verify-integrations.js",
+    "example:renewal-risk": "node examples/renewal-risk-agent.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
