@@ -59,23 +59,27 @@ model receives observation
 git clone https://github.com/ivanshtokov/AgentHarnessKit.git
 cd AgentHarnessKit
 npm install
-npm test
-npm run verify:integrations
-npm run evals
+npm run verify:release
 npm run example:renewal-risk
 ```
 
 Ожидаемый результат:
 
 - тесты проходят;
-- integration verifier подтверждает Codex/Hermes layout;
+- release verifier подтверждает sync skill packages, evals, тесты и Codex/Hermes layout;
 - пример сначала останавливается на `needs_approval`;
 - после approval record выполняет `send_customer_email`;
 - trace показывает tool proposal, permission decision и execution result.
 
-## Установка как библиотека
+## Установка
 
-Пока пакет не опубликован в npm, ставь из GitHub:
+Из npm:
+
+```bash
+npm install harness-agent-kit
+```
+
+Если нужен исходник напрямую из GitHub:
 
 ```bash
 npm install github:ivanshtokov/AgentHarnessKit
