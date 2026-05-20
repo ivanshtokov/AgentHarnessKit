@@ -9,8 +9,6 @@
 
 Стартовый набор для агентного харнесса: typed tools, permission engine, approval gates, durable state, budgets, trace events, context builder, provider adapters, reference-layer, templates и native-интеграция для Codex/Hermes.
 
-Репозиторий: [ivanshtokov/AgentHarnessKit](https://github.com/ivanshtokov/AgentHarnessKit)
-
 Контакт: [@IShtokov](https://t.me/IShtokov)
 
 ## Зачем
